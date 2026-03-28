@@ -1,0 +1,6 @@
+{
+  "routes": [
+    { "pattern": "/api/*", "zone_name": null }
+  ],
+  "exclude": []
+}
