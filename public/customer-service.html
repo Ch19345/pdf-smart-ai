@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线客服 - PDF Smart AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+        
+        .message-bubble-user {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border-radius: 16px 16px 4px 16px;
+        }
+        
+        .message-bubble-agent {
+            background: #f3f4f6;
+            border-radius: 16px 16px 16px 4px;
+        }
+        
+        .chat-item:hover { background-color: #f9fafb; }
+        .chat-item.active { background-color: #eff6ff; border-left: 3px solid #6366f1; }
+        
+        .typing-dot {
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .quick-reply-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen overflow-hidden">
+    <div class="flex h-full max-w-[1600px] mx-auto bg-white shadow-2xl">
+        
+        <!-- 左侧：会话列表 -->
+        <div class="w-72 border-r border-gray-200 flex flex-col bg-gray-50">
+            <!-- 头部搜索 -->
+            <div class="p-4 bg-white border-b border-gray-200">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" 
+                           placeholder="搜索会话..." 
+                           class="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                </div>
+            </div>
+            
+            <!-- 会话列表 -->
+            <div class="flex-1 overflow-y-auto scrollbar-thin">
+                <!-- 新消息提示 -->
+                <div class="px-4 py-2 text-xs text-gray-500 font-medium bg-gray-100">新消息</div>
+                
+                <div class="chat-item active p-4 cursor-pointer transition border-l-3 border-transparent">
+                    <div class="flex gap-3">
+                        <div class="relative">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                                小
+                            </div>
+                            <div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium text-gray-900 truncate">小助手</span>
+                                <span class="text-xs text-gray-400">10:30</span>
+                            </div>
+                            <p class="text-sm text-gray-600 truncate mt-0.5">您好！有什么可以帮助您的吗？</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chat-item p-4 cursor-pointer transition border-l-3 border-transparent">
+                    <div class="flex gap-3">
+                        <div class="relative">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-semibold">
+                                技
+                            </div>
+                            <div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-gray-400 border-2 border-white rounded-full"></div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium text-gray-900 truncate">技术支持</span>
+                                <span class="text-xs text-gray-400">昨天</span>
+                            </div>
+                            <p class="text-sm text-gray-500 truncate mt-0.5">问题已解决，如有其他问题请随时联系</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chat-item p-4 cursor-pointer transition border-l-3 border-transparent">
+                    <div class="flex gap-3">
+                        <div class="relative">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white font-semibold">
+                                售
+                            </div>
+                            <div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium text-gray-900 truncate">售前咨询</span>
+                                <span class="text-xs text-gray-400">周一</span>
+                            </div>
+                            <p class="text-sm text-gray-500 truncate mt-0.5">Pro 版本包含更多高级功能...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 历史会话 -->
+                <div class="px-4 py-2 text-xs text-gray-500 font-medium bg-gray-100 mt-2">历史会话</div>
+                
+                <div class="chat-item p-4 cursor-pointer transition border-l-3 border-transparent">
+                    <div class="flex gap-3">
+                        <div class="relative">
+                            <div class="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-white font-semibold">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium text-gray-900 truncate">AI 助手</span>
+                                <span class="text-xs text-gray-400">3天前</span>
+                            </div>
+                            <p class="text-sm text-gray-500 truncate mt-0.5">已结束</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 中间：聊天区域 -->
+        <div class="flex-1 flex flex-col bg-white">
+            <!-- 头部 -->
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                        小
+                    </div>
+                    <div>
+                        <h2 class="font-semibold text-gray-900">小助手</h2>
+                        <div class="flex items-center gap-1.5 text-xs text-green-600">
+                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <span>在线</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition" title="语音通话">
+                        <i class="fas fa-phone"></i>
+                    </button>
+                    <button class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition" title="视频通话">
+                        <i class="fas fa-video"></i>
+                    </button>
+                    <button class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition" title="更多">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 消息区域 -->
+            <div id="chatMessages" class="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin bg-gray-50">
+                <!-- 时间分隔线 -->
+                <div class="flex items-center justify-center">
+                    <span class="text-xs text-gray-400 bg-gray-50 px-4">今天 10:30</span>
+                </div>
+                
+                <!-- 欢迎消息 -->
+                <div class="flex gap-3 fade-in">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white flex-shrink-0">
+                        <i class="fas fa-headset text-sm"></i>
+                    </div>
+                    <div class="max-w-[70%]">
+                        <div class="message-bubble-agent px-4 py-3 text-sm text-gray-700">
+                            <p class="font-medium mb-1">👋 您好！欢迎来到 PDF Smart AI</p>
+                            <p>我是您的专属客服小助手，有什么可以帮助您的吗？</p>
+                        </div>
+                        <span class="text-xs text-gray-400 mt-1 block">10:30</span>
+                    </div>
+                </div>
+                
+                <!-- 快捷回复选项 -->
+                <div class="flex gap-3 fade-in">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white flex-shrink-0 opacity-0">
+                        <i class="fas fa-headset text-sm"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                            <p class="text-sm text-gray-600 mb-3">您可能想了解：</p>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="sendQuickReply('如何使用PDF智能解析？')" class="quick-reply-btn px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-medium transition border border-indigo-100">
+                                    📄 如何使用PDF智能解析？
+                                </button>
+                                <button onclick="sendQuickReply('Pro版本有什么功能？')" class="quick-reply-btn px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-medium transition border border-indigo-100">
+                                    ⭐ Pro版本有什么功能？
+                                </button>
+                                <button onclick="sendQuickReply('如何联系技术支持？')" class="quick-reply-btn px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-medium transition border border-indigo-100">
+                                    🔧 如何联系技术支持？
+                                </button>
+                                <button onclick="sendQuickReply('查看价格方案')" class="quick-reply-btn px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-medium transition border border-indigo-100">
+                                    💰 查看价格方案
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 输入区域 -->
+            <div class="p-4 bg-white border-t border-gray-200">
+                <!-- 工具栏 -->
+                <div class="flex items-center gap-1 mb-3">
+                    <button class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition" title="表情">
+                        <i class="far fa-smile text-lg"></i>
+                    </button>
+                    <button class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition" title="图片">
+                        <i class="far fa-image text-lg"></i>
+                    </button>
+                    <button class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition" title="文件">
+                        <i class="far fa-file text-lg"></i>
+                    </button>
+                    <button class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition" title="截图">
+                        <i class="fas fa-scissors text-lg"></i>
+                    </button>
+                    <div class="flex-1"></div>
+                    <button class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition" title="聊天记录">
+                        <i class="far fa-clock text-lg"></i>
+                    </button>
+                </div>
+                
+                <!-- 输入框 -->
+                <div class="flex gap-3">
+                    <div class="flex-1 relative">
+                        <textarea id="messageInput" 
+                                  rows="2"
+                                  placeholder="请输入消息..." 
+                                  class="w-full px-4 py-3 bg-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white resize-none transition"
+                                  onkeypress="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
+                        <div class="absolute right-3 bottom-3 text-xs text-gray-400">
+                            <span id="charCount">0</span>/500
+                        </div>
+                    </div>
+                    <button onclick="sendMessage()" 
+                            id="sendBtn"
+                            class="px-6 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition flex items-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span>发送</span>
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 右侧：联系信息 -->
+        <div class="w-72 border-l border-gray-200 bg-gray-50 flex flex-col">
+            <!-- 头部 -->
+            <div class="p-4 border-b border-gray-200 bg-white">
+                <h3 class="font-semibold text-gray-900">联系信息</h3>
+            </div>
+            
+            <!-- 内容 -->
+            <div class="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-6">
+                <!-- 客服信息卡片 -->
+                <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                            小
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-gray-900">在线客服</h4>
+                            <p class="text-xs text-green-600 flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                                工作中
+                            </p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600">工作时间：周一至周五 9:00-18:00</p>
+                </div>
+                
+                <!-- 微信客服 -->
+                <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <div class="flex items-center gap-2 mb-3">
+                        <i class="fab fa-weixin text-green-500 text-lg"></i>
+                        <h4 class="font-medium text-gray-900">微信客服</h4>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 mb-3 flex items-center justify-center">
+                        <!-- 二维码占位 -->
+                        <div class="w-32 h-32 bg-white rounded-lg flex items-center justify-center border border-gray-200">
+                            <div class="text-center">
+                                <i class="fas fa-qrcode text-4xl text-gray-300 mb-2"></i>
+                                <p class="text-xs text-gray-400">扫码添加</p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 text-center">微信号：PDFSmartAI-Service</p>
+                </div>
+                
+                <!-- 联系方式 -->
+                <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <h4 class="font-medium text-gray-900 mb-3">其他联系方式</h4>
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">邮箱</p>
+                                <p class="text-sm text-gray-900">support@pdfsmart.ai</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-green-600">
+                                <i class="fas fa-phone"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">电话</p>
+                                <p class="text-sm text-gray-900">400-888-8888</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600">
+                                <i class="fas fa-globe"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">官网</p>
+                                <p class="text-sm text-gray-900">www.pdfsmart.ai</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 常见问题 -->
+                <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <h4 class="font-medium text-gray-900 mb-3">常见问题</h4>
+                    <div class="space-y-2">
+                        <a href="#" class="block text-sm text-indigo-600 hover:text-indigo-700 hover:underline">如何上传PDF文件？</a>
+                        <a href="#" class="block text-sm text-indigo-600 hover:text-indigo-700 hover:underline">支持哪些文件格式？</a>
+                        <a href="#" class="block text-sm text-indigo-600 hover:text-indigo-700 hover:underline">如何升级Pro版本？</a>
+                        <a href="#" class="block text-sm text-indigo-600 hover:text-indigo-700 hover:underline">退款政策说明</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const charCount = document.getElementById('charCount');
+        const sendBtn = document.getElementById('sendBtn');
+        
+        // 字符计数
+        messageInput.addEventListener('input', function() {
+            const len = this.value.length;
+            charCount.textContent = len;
+            if (len > 500) {
+                charCount.classList.add('text-red-500');
+            } else {
+                charCount.classList.remove('text-red-500');
+            }
+        });
+        
+        // 发送消息
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text) return;
+            if (text.length > 500) {
+                alert('消息长度不能超过500字符');
+                return;
+            }
+            
+            // 添加用户消息
+            addUserMessage(text);
+            messageInput.value = '';
+            charCount.textContent = '0';
+            
+            // 模拟客服回复
+            showTyping();
+            setTimeout(() => {
+                removeTyping();
+                addAgentMessage(getReply(text));
+            }, 1500 + Math.random() * 1000);
+        }
+        
+        // 快捷回复
+        function sendQuickReply(text) {
+            addUserMessage(text);
+            showTyping();
+            setTimeout(() => {
+                removeTyping();
+                addAgentMessage(getReply(text));
+            }, 1000 + Math.random() * 500);
+        }
+        
+        // 添加用户消息
+        function addUserMessage(text) {
+            const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            const html = `
+                <div class="flex gap-3 flex-row-reverse fade-in">
+                    <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-white flex-shrink-0">
+                        <i class="fas fa-user text-sm"></i>
+                    </div>
+                    <div class="max-w-[70%]">
+                        <div class="message-bubble-user px-4 py-3 text-sm text-white">
+                            ${escapeHtml(text)}
+                        </div>
+                        <span class="text-xs text-gray-400 mt-1 block text-right">${time}</span>
+                    </div>
+                </div>
+            `;
+            chatMessages.insertAdjacentHTML('beforeend', html);
+            scrollToBottom();
+        }
+        
+        // 添加客服消息
+        function addAgentMessage(text) {
+            const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            const html = `
+                <div class="flex gap-3 fade-in">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white flex-shrink-0">
+                        <i class="fas fa-headset text-sm"></i>
+                    </div>
+                    <div class="max-w-[70%]">
+                        <div class="message-bubble-agent px-4 py-3 text-sm text-gray-700">
+                            ${text}
+                        </div>
+                        <span class="text-xs text-gray-400 mt-1 block">${time}</span>
+                    </div>
+                </div>
+            `;
+            chatMessages.insertAdjacentHTML('beforeend', html);
+            scrollToBottom();
+        }
+        
+        // 显示正在输入
+        function showTyping() {
+            const html = `
+                <div id="typingIndicator" class="flex gap-3 fade-in">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white flex-shrink-0">
+                        <i class="fas fa-headset text-sm"></i>
+                    </div>
+                    <div class="bg-gray-100 rounded-2xl px-4 py-3 flex items-center gap-1">
+                        <div class="w-2 h-2 bg-gray-400 rounded-full typing-dot"></div>
+                        <div class="w-2 h-2 bg-gray-400 rounded-full typing-dot"></div>
+                        <div class="w-2 h-2 bg-gray-400 rounded-full typing-dot"></div>
+                    </div>
+                </div>
+            `;
+            chatMessages.insertAdjacentHTML('beforeend', html);
+            scrollToBottom();
+        }
+        
+        // 移除正在输入
+        function removeTyping() {
+            const typing = document.getElementById('typingIndicator');
+            if (typing) typing.remove();
+        }
+        
+        // 获取回复
+        function getReply(input) {
+            const replies = {
+                '如何使用PDF智能解析？': '使用非常简单！1️⃣ 点击上传区域或拖拽PDF文件到页面 2️⃣ 等待文件解析完成 3️⃣ 在右侧聊天框输入您的问题，AI会基于文档内容回答您',
+                'Pro版本有什么功能？': 'Pro版本包含以下高级功能：<br>✅ 每月1000页解析额度<br>✅ 支持更大文件（最大100MB）<br>✅ 优先客服支持<br>✅ 导出聊天记录<br>✅ API接口访问',
+                '如何联系技术支持？': '您可以通过以下方式联系技术支持：<br>📧 邮箱：support@pdfsmart.ai<br>📱 微信：PDFSmartAI-Service<br>☎️ 电话：400-888-8888',
+                '查看价格方案': '我们提供三种方案：<br>🆓 免费版：每月50页，基础功能<br>💎 基础版：$9/月，每月300页<br>⭐ Pro版：$19/月，每月1000页+全部功能',
+                'default': '感谢您的咨询！我已记录下您的问题，会尽快为您解答。如有紧急情况，请直接拨打客服热线 400-888-8888 或通过右侧微信联系我们。'
+            };
+            return replies[input] || replies['default'];
+        }
+        
+        // 滚动到底部
+        function scrollToBottom() {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // HTML转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // 会话列表点击切换
+        document.querySelectorAll('.chat-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.chat-item').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+        
+        // 初始化滚动
+        scrollToBottom();
+    </script>
+</body>
+</html>

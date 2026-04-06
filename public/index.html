@@ -3,123 +3,382 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Smart AI</title>
+    <title>PDF Smart AI - Chat with any PDF</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
     <style>
         * { font-family: 'Inter', sans-serif; }
         .drop-zone { transition: all 0.3s ease; }
-        .drop-zone.dragover { border-color: #6366f1; background: #eef2ff; }
+        .drop-zone.dragover { border-color: #6366f1; background: #eef2ff; transform: scale(1.02); }
         #pdfViewer canvas { max-width: 100%; height: auto; margin: 0 auto; display: block; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+        .view { display: none; }
+        .view.active { display: block; }
+        .workspace-view { display: none; }
+        .workspace-view.active { display: flex; }
     </style>
 </head>
-<body class="bg-gray-900 h-screen flex flex-col">
-    <!-- API Key (for demo only - use backend in production) -->
-    <script>
-        const API_KEY = 'sk-sp-2FowrRM7p5Wll9uaVyPJH6EnHgbWsziNPx3wunu6tgTWLbqE';
-        const API_URL = 'https://api.smith.langchain.com/v1/chat/messages';
-    </script>
-
-    <!-- HEADER -->
-    <header class="bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+<body class="bg-white min-h-screen flex flex-col">
+    <!-- Top Nav -->
+    <header class="border-b border-gray-200">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+            <a href="#" onclick="showView('landing')" class="flex items-center gap-2">
+                <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <span class="text-xl font-semibold text-gray-900">PDF Smart AI</span>
+            </a>
+            <div class="flex items-center gap-6">
+                <nav class="hidden md:flex items-center gap-6">
+                    <a href="#" onclick="showView('landing')" class="text-sm text-gray-600 hover:text-gray-900 transition">Home</a>
+                    <a href="#" onclick="showView('pricing')" class="text-sm text-gray-600 hover:text-gray-900 transition">Pricing</a>
+                </nav>
+                <div class="flex items-center gap-3">
+                    <!-- Login Button -->
+                    <button id="loginBtn" onclick="auth.login()" class="px-4 py-2 text-sm font-medium bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition flex items-center gap-2">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Sign in with Google
+                    </button>
+                    <!-- User Info (hidden by default) -->
+                    <div id="userInfo" class="hidden flex items-center gap-3">
+                        <img id="userAvatar" src="" alt="Avatar" class="w-8 h-8 rounded-full border border-gray-200">
+                        <span id="userName" class="text-sm font-medium text-gray-700"></span>
+                        <button onclick="auth.logout()" class="text-sm text-gray-500 hover:text-gray-700 underline">Logout</button>
+                    </div>
+                    <button onclick="showView('pricing')" class="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">Get Started</button>
+                </div>
             </div>
-            <span class="text-lg font-semibold text-white">PDF Smart AI</span>
-            <span class="px-2 py-0.5 text-xs bg-green-600 text-white rounded">AI Ready</span>
-        </div>
-        <div class="flex items-center gap-3">
-            <button onclick="document.getElementById('newUpload').click()" class="px-4 py-2 text-sm text-gray-300 hover:text-white transition">
-                <span class="flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                    New PDF
-                </span>
-            </button>
-            <button onclick="showModal('pricingModal')" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">Pro</button>
-            <input type="file" id="newUpload" accept=".pdf" class="hidden">
         </div>
     </header>
 
-    <!-- MAIN CONTENT -->
-    <main class="flex-1 flex overflow-hidden">
-        <!-- UPLOAD PAGE -->
-        <div id="uploadPage" class="flex-1 flex items-center justify-center bg-gray-900">
-            <div class="text-center max-w-lg px-4">
-                <div class="w-20 h-20 bg-indigo-600/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg class="w-10 h-10 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                </div>
-                <h1 class="text-2xl font-bold text-white mb-3">Chat with any PDF</h1>
-                <p class="text-gray-400 mb-8">Upload a PDF and ask questions about its content instantly.</p>
-                
-                <div id="dropZone" class="drop-zone border-2 border-dashed border-gray-600 rounded-xl p-8 cursor-pointer hover:border-indigo-500 bg-gray-800/50">
-                    <svg class="w-12 h-12 text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                    <p class="text-white font-medium mb-1">Drop your PDF here</p>
-                    <p class="text-gray-500 text-sm">or click to browse</p>
+    <!-- LANDING VIEW -->
+    <div id="landingView" class="view active flex-1 flex flex-col">
+        <main class="flex-1 flex flex-col items-center justify-center px-4 py-16">
+            <!-- Hero Text -->
+            <div class="text-center mb-12">
+                <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Chat with any PDF</h1>
+                <p class="text-lg text-gray-600 max-w-xl mx-auto">Upload a PDF and ask questions about its content instantly. AI-powered analysis and summarization.</p>
+            </div>
+
+            <!-- Drop Zone -->
+            <div id="dropZone" class="drop-zone w-full max-w-lg border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center cursor-pointer hover:border-indigo-400 hover:bg-gray-50 bg-white shadow-sm">
+                <div class="flex flex-col items-center gap-4">
+                    <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
+                        <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-lg font-medium text-gray-900">Drop your PDF here</p>
+                        <p class="text-sm text-gray-500 mt-1">or click to upload</p>
+                    </div>
                     <input type="file" id="fileInput" accept=".pdf" class="hidden">
                 </div>
-                
-                <div class="mt-8 flex items-center justify-center gap-6 text-sm text-gray-500">
-                    <span class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Claude AI</span>
-                    <span class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Instant analysis</span>
-                    <span class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Free to start</span>
+            </div>
+
+            <!-- Features -->
+            <div class="mt-12 grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                <div class="flex flex-col items-center text-center gap-3">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="font-semibold text-gray-900">Chat with any PDF</h3>
+                    <p class="text-sm text-gray-500">Ask questions and get instant answers from your documents</p>
+                </div>
+                <div class="flex flex-col items-center text-center gap-3">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                    </div>
+                    <h3 class="font-semibold text-gray-900">Summarize instantly</h3>
+                    <p class="text-sm text-gray-500">Get key insights from long documents in seconds</p>
+                </div>
+                <div class="flex flex-col items-center text-center gap-3">
+                    <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                    </div>
+                    <h3 class="font-semibold text-gray-900">Export results</h3>
+                    <p class="text-sm text-gray-500">Download summaries and answers in multiple formats</p>
                 </div>
             </div>
-        </div>
+        </main>
+    </div>
 
-        <!-- WORKSPACE -->
-        <div id="workspacePage" class="hidden flex-1 flex">
+    <!-- PRICING VIEW -->
+    <div id="pricingView" class="view">
+        <main class="max-w-5xl mx-auto px-6 py-16">
+            <!-- Header -->
+            <div class="text-center mb-12">
+                <h1 class="text-3xl font-bold text-gray-900 mb-3">Simple, transparent pricing</h1>
+                <p class="text-gray-600 text-lg">Start free. Upgrade when you need more.</p>
+            </div>
+
+            <!-- Pricing Cards -->
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- Free -->
+                <div class="border border-gray-200 rounded-2xl p-6 bg-white hover:shadow-lg transition cursor-pointer group" onclick="showPricingDetail('free')">
+                    <div class="mb-6">
+                        <h2 class="text-lg font-semibold text-gray-900 group-hover:text-indigo-600 transition">Free</h2>
+                        <p class="text-gray-500 text-sm mt-1">Try it out</p>
+                    </div>
+                    <div class="mb-6">
+                        <span class="text-4xl font-bold text-gray-900">$0</span>
+                        <span class="text-gray-500">/month</span>
+                    </div>
+                    <ul class="space-y-3 mb-8">
+                        <li class="flex items-start gap-2 text-sm text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                            3 questions per day
+                        </li>
+                        <li class="flex items-start gap-2 text-sm text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                            Max 10MB per file
+                        </li>
+                        <li class="flex items-start gap-2 text-sm text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                            Up to 30 pages
+                        </li>
+                        <li class="flex items-start gap-2 text-sm text-gray-400">
+                            <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                            </svg>
+                            No export
+                        </li>
+                    </ul>
+                    <button onclick="event.stopPropagation(); startFree()" class="w-full py-3 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition">
+                        Get Started Free
+                    </button>
+                </div>
+
+                <!-- Basic -->
+                <div class="border border-gray-200 rounded-2xl p-6 bg-white hover:shadow-lg transition cursor-pointer group" onclick="showPricingDetail('basic')">
+                    <div class="mb-6">
+                        <h2 class="text-lg font-semibold text-gray-900 group-hover:text-indigo-600 transition">Basic</h2>
+                        <p class="text-gray-500 text-sm mt-1">For casual users</p>
+                    </div>
+                    <div class="mb-6">
+                        <span class="text-4xl font-bold text-gray-900">$4.99</span>
+                        <span class="text-gray-500">/month</span>
+                    </div>
+                    <ul class="space-y-3 mb-8">
+                        <li class="flex items-start gap-2 text-sm text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                            50 questions per day
+                        </li>
+                        <li class="flex items-start gap-2 text-sm text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                            Max 50MB per file
+                        </li>
+                        <li class="flex items-start gap-2 text-sm text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                            Up to 200 pages
+                        </li>
+                        <li class="flex items-start gap-2 text-sm text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                            Export to TXT
+                        </li>
+                    </ul>
+                    <button onclick="event.stopPropagation(); startBasic()" class="w-full py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition">
+                        Start Basic
+                    </button>
+                </div>
+
+                <!-- Pro (Featured) -->
+                <div class="border-2 border-indigo-600 rounded-2xl p-6 bg-white relative hover:shadow-lg transition cursor-pointer group" onclick="showPricingDetail('pro')">
+                    <div class="absolute -top-3 left-1/2 -translate-x-1/2">
+                        <span class="bg-indigo-600 text-white text-xs font-semibold px-3 py-1 rounded-full">Most Popular</span>
+                    </div>
+                    <div class="mb-6 mt-2">
+                        <h2 class="text-lg font-semibold text-gray-900 group-hover:text-indigo-600 transition">Pro</h2>
+                        <p class="text-gray-500 text-sm mt-1">For power users</p>
+                    </div>
+                    <div class="mb-6">
+                        <span class="text-4xl font-bold text-gray-900">$9.99</span>
+                        <span class="text-gray-500">/month</span>
+                    </div>
+                    <ul class="space-y-3 mb-8">
+                        <li class="flex items-start gap-2 text-sm text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                            <strong>Unlimited</strong> questions
+                        </li>
+                        <li class="flex items-start gap-2 text-sm text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                            Max 150MB per file
+                        </li>
+                        <li class="flex items-start gap-2 text-sm text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                            Up to 1000 pages
+                        </li>
+                        <li class="flex items-start gap-2 text-sm text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                            Export PDF / Word / TXT
+                        </li>
+                        <li class="flex items-start gap-2 text-sm text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                            <strong>Priority processing</strong>
+                        </li>
+                    </ul>
+                    <button onclick="event.stopPropagation(); startPro()" class="w-full py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition">
+                        Start Pro
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pricing Detail Modal -->
+            <div id="pricingDetailModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50">
+                <div class="bg-white rounded-2xl max-w-lg w-full mx-4 shadow-xl overflow-hidden">
+                    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
+                        <div class="flex items-center justify-between">
+                            <h2 id="pricingDetailTitle" class="text-2xl font-bold">套餐详情</h2>
+                            <button onclick="closePricingDetail()" class="text-white/80 hover:text-white">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <p id="pricingDetailSubtitle" class="text-white/80 mt-1">选择适合您的方案</p>
+                    </div>
+                    <div id="pricingDetailContent" class="p-6">
+                        <!-- Dynamic content will be inserted here -->
+                    </div>
+                    <div class="px-6 pb-6">
+                        <button id="pricingDetailBtn" onclick="selectPlan()" class="w-full py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition">
+                            立即订阅
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-16 max-w-2xl mx-auto">
+                <h2 class="text-xl font-semibold text-gray-900 text-center mb-8">Frequently asked questions</h2>
+                <div class="space-y-4">
+                    <div class="border border-gray-200 rounded-xl p-4">
+                        <h3 class="font-medium text-gray-900">Can I cancel anytime?</h3>
+                        <p class="text-sm text-gray-600 mt-2">Yes, you can cancel your subscription at any time. No questions asked.</p>
+                    </div>
+                    <div class="border border-gray-200 rounded-xl p-4">
+                        <h3 class="font-medium text-gray-900">What payment methods do you accept?</h3>
+                        <p class="text-sm text-gray-600 mt-2">We accept all major credit cards via Stripe. Secure and fast.</p>
+                    </div>
+                    <div class="border border-gray-200 rounded-xl p-4">
+                        <h3 class="font-medium text-gray-900">Is my data secure?</h3>
+                        <p class="text-sm text-gray-600 mt-2">Absolutely. Your files are encrypted and deleted after processing. We never share your data.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- WORKSPACE VIEW -->
+    <div id="workspaceView" class="workspace-view flex-1 overflow-hidden">
+        <div class="flex h-full">
             <!-- PDF Viewer -->
-            <div class="w-1/2 bg-gray-800 border-r border-gray-700 flex flex-col">
-                <div class="bg-gray-800 border-b border-gray-700 px-4 py-2 flex items-center justify-between">
+            <div class="w-1/2 bg-gray-100 border-r border-gray-200 flex flex-col">
+                <div class="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path></svg>
-                        <span class="text-white text-sm font-medium" id="fileName">document.pdf</span>
+                        <svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-sm font-medium text-gray-900" id="fileName">document.pdf</span>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <button onclick="prevPage()" class="p-1 hover:bg-gray-700 rounded text-gray-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
-                        <span class="text-gray-400 text-sm" id="pageInfo">1 / 1</span>
-                        <button onclick="nextPage()" class="p-1 hover:bg-gray-700 rounded text-gray-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
-                        <div class="h-4 w-px bg-gray-700 mx-1"></div>
-                        <button onclick="zoomOut()" class="p-1 hover:bg-gray-700 rounded text-gray-400 text-sm">−</button>
-                        <span class="text-gray-400 text-sm" id="zoomLevel">100%</span>
-                        <button onclick="zoomIn()" class="p-1 hover:bg-gray-700 rounded text-gray-400 text-sm">+</button>
+                    <div class="flex items-center gap-2">
+                        <button onclick="prevPage()" class="p-1 hover:bg-gray-100 rounded"><svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
+                        <span class="text-sm text-gray-600" id="pageInfo">1 / 1</span>
+                        <button onclick="nextPage()" class="p-1 hover:bg-gray-100 rounded"><svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
+                        <div class="h-4 w-px bg-gray-300 mx-1"></div>
+                        <button onclick="zoomOut()" class="p-1 hover:bg-gray-100 rounded text-sm text-gray-600">−</button>
+                        <span class="text-sm text-gray-600" id="zoomLevel">100%</span>
+                        <button onclick="zoomIn()" class="p-1 hover:bg-gray-100 rounded text-sm text-gray-600">+</button>
+                        <div class="h-4 w-px bg-gray-300 mx-1"></div>
+                        <button onclick="showPDFExportModal()" class="p-1.5 hover:bg-indigo-100 text-indigo-600 rounded transition flex items-center gap-1 text-sm" title="导出PDF">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                            </svg>
+                            导出
+                        </button>
                     </div>
                 </div>
-                <div id="pdfViewer" class="flex-1 overflow-auto p-4 bg-gray-900 flex justify-center"></div>
+                <div id="pdfViewer" class="flex-1 overflow-auto p-4 flex justify-center bg-gray-50"></div>
             </div>
 
-            <!-- Chat -->
-            <div class="w-1/2 bg-gray-800 flex flex-col">
-                <div class="bg-gray-800 border-b border-gray-700 px-4 py-3">
-                    <h2 class="text-white font-medium">Ask questions about this PDF</h2>
-                    <p class="text-gray-500 text-sm">Claude AI is ready to help</p>
+            <!-- Chat Panel -->
+            <div class="w-1/2 bg-white flex flex-col">
+                <div class="border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                    <div>
+                        <h2 class="font-medium text-gray-900">Ask questions about this PDF</h2>
+                        <p class="text-sm text-gray-500">AI is ready to help</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="copyLastResponse()" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition" title="Copy last response">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        </button>
+                        <button onclick="exportChat('txt')" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition" title="Export as TXT">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        </button>
+                        <button onclick="exportChat('print')" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition" title="Print / Save as PDF">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                        </button>
+                    </div>
                 </div>
                 
                 <div id="chatContainer" class="flex-1 overflow-auto p-4 space-y-4">
                     <div class="flex gap-3">
-                        <div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center flex-shrink-0">
-                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                         </div>
-                        <div class="bg-gray-700 rounded-2xl rounded-tl-md px-4 py-3 text-sm max-w-[85%]">
-                            <p class="text-white">Hi! I've analyzed your PDF. Ask me anything about it!</p>
+                        <div class="bg-gray-100 rounded-2xl rounded-tl-md px-4 py-3 text-sm max-w-[85%]">
+                            <p class="text-gray-800">Hi! I've analyzed your PDF. Ask me anything about it!</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="p-4 border-t border-gray-700">
+                <div class="p-4 border-t border-gray-200">
                     <div class="flex gap-2 mb-3">
-                        <button onclick="quickAsk('Summarize this document')" class="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-full transition">Summarize</button>
-                        <button onclick="quickAsk('What are the key points?')" class="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-full transition">Key points</button>
-                        <button onclick="quickAsk('What is the conclusion?')" class="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-full transition">Conclusion</button>
+                        <button onclick="quickAsk('Summarize this document')" class="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition">Summarize</button>
+                        <button onclick="quickAsk('What are the key points?')" class="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition">Key points</button>
+                        <button onclick="quickAsk('What is the conclusion?')" class="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition">Conclusion</button>
                     </div>
                     <div class="flex gap-2">
-                        <input type="text" id="chatInput" placeholder="Ask a question..." class="flex-1 px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" onkeypress="if(event.key==='Enter')sendMessage()">
+                        <input type="text" id="chatInput" placeholder="Ask a question..." class="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-indigo-500" onkeypress="if(event.key==='Enter')sendMessage()">
                         <button onclick="sendMessage()" id="sendBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
                         </button>
@@ -127,79 +386,67 @@
                 </div>
             </div>
         </div>
-    </main>
-
-    <!-- PRICING MODAL -->
-    <div id="pricingModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50">
-        <div class="bg-gray-800 rounded-2xl max-w-3xl w-full mx-4 overflow-hidden">
-            <div class="p-6 border-b border-gray-700 flex justify-between items-center">
-                <h2 class="text-xl font-semibold text-white">Upgrade to Pro</h2>
-                <button onclick="hideAllModals()" class="text-gray-400 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
-            </div>
-            <div class="p-6 grid grid-cols-3 gap-4">
-                <div class="bg-gray-700/50 rounded-xl p-4">
-                    <h3 class="text-white font-medium">Free</h3>
-                    <p class="text-3xl font-bold text-white mt-2">$0<span class="text-sm font-normal text-gray-400">/mo</span></p>
-                    <ul class="mt-4 space-y-2 text-sm text-gray-400">
-                        <li>✓ 3 questions/day</li>
-                        <li>✓ 10MB files</li>
-                        <li class="text-gray-600">✕ Export</li>
-                    </ul>
-                </div>
-                <div class="bg-gray-700/50 rounded-xl p-4">
-                    <h3 class="text-white font-medium">Basic</h3>
-                    <p class="text-3xl font-bold text-white mt-2">$4.99<span class="text-sm font-normal text-gray-400">/mo</span></p>
-                    <ul class="mt-4 space-y-2 text-sm text-gray-400">
-                        <li>✓ 50 questions/day</li>
-                        <li>✓ 50MB files</li>
-                        <li>✓ TXT export</li>
-                    </ul>
-                </div>
-                <div class="bg-indigo-600/20 border-2 border-indigo-600 rounded-xl p-4">
-                    <span class="text-xs text-indigo-400 font-medium">MOST POPULAR</span>
-                    <h3 class="text-white font-medium mt-1">Pro</h3>
-                    <p class="text-3xl font-bold text-white mt-2">$9.99<span class="text-sm font-normal text-gray-400">/mo</span></p>
-                    <ul class="mt-4 space-y-2 text-sm text-gray-300">
-                        <li>✓ Unlimited</li>
-                        <li>✓ 150MB files</li>
-                        <li>✓ All exports</li>
-                    </ul>
-                    <button onclick="handlePayment()" class="w-full mt-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium">Get Pro</button>
-                </div>
-            </div>
-        </div>
     </div>
 
+    <!-- Footer -->
+    <footer class="border-t border-gray-200 py-6 text-center mt-auto">
+        <div class="flex items-center justify-center gap-6 text-sm text-gray-500">
+            <a href="#" class="hover:text-gray-700 transition">Privacy</a>
+            <span>·</span>
+            <a href="#" class="hover:text-gray-700 transition">Terms</a>
+            <span>·</span>
+            <a href="#" class="hover:text-gray-700 transition">Contact</a>
+        </div>
+    </footer>
+
     <script>
+        // View Management
+        function showView(viewName) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.workspace-view').forEach(v => v.classList.remove('active'));
+            
+            if (viewName === 'workspace') {
+                document.getElementById('workspaceView').classList.add('active');
+            } else {
+                document.getElementById(viewName + 'View').classList.add('active');
+            }
+            window.scrollTo(0, 0);
+        }
+
+        // Pricing Actions
+        function startFree() { showView('landing'); }
+        function startBasic() { alert('Stripe checkout for Basic would open here!'); }
+        function startPro() { alert('Stripe checkout for Pro would open here!'); }
+
+        // PDF & Chat State
         let pdfDoc = null, currentPage = 1, totalPages = 0, currentScale = 1.0;
-        let pdfText = ''; // Store extracted text
+        let pdfText = '';
         let isLoading = false;
 
-        function showPage(id) { 
-            document.querySelectorAll('[id$="Page"]').forEach(p => p.classList.add('hidden')); 
-            document.getElementById(id).classList.remove('hidden'); 
-        }
-        function showModal(id) { document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex'); }
-        function hideAllModals() { document.querySelectorAll('[id$="Modal"]').forEach(m => { m.classList.add('hidden'); m.classList.remove('flex'); }); }
-
-        // Upload handlers
+        // Upload Handlers
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
-        const newUpload = document.getElementById('newUpload');
 
-        dropZone.addEventListener('click', () => fileInput.click());
-        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-        dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files[0]) handleUpload(e.dataTransfer.files[0]); });
-        fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleUpload(fileInput.files[0]); });
-        newUpload.addEventListener('change', () => { if (newUpload.files[0]) handleUpload(newUpload.files[0]); });
+        if (dropZone) {
+            dropZone.addEventListener('click', () => fileInput.click());
+            dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+            dropZone.addEventListener('drop', e => { 
+                e.preventDefault(); 
+                dropZone.classList.remove('dragover'); 
+                if (e.dataTransfer.files[0]) handleUpload(e.dataTransfer.files[0]); 
+            });
+        }
+        if (fileInput) {
+            fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleUpload(fileInput.files[0]); });
+        }
 
         async function handleUpload(file) {
             if (file.type !== 'application/pdf') { alert('Please upload a PDF!'); return; }
             document.getElementById('fileName').textContent = file.name;
             currentPage = 1; currentScale = 1.0;
             
-            // Show loading
+            showView('workspace');
             document.getElementById('pdfViewer').innerHTML = '<div class="text-gray-400 flex items-center justify-center h-full">Loading PDF and extracting text...</div>';
             
             const arrayBuffer = await file.arrayBuffer();
@@ -223,7 +470,6 @@
             document.getElementById('pageInfo').textContent = `1 / ${totalPages}`;
             document.getElementById('zoomLevel').textContent = '100%';
             
-            showPage('workspacePage');
             renderPage(1);
         }
 
@@ -262,54 +508,33 @@
             sendBtn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
             
             const chat = document.getElementById('chatContainer');
-            chat.innerHTML += `<div class="flex gap-3 flex-row-reverse"><div class="w-8 h-8 bg-gray-600 rounded-full flex-shrink-0"></div><div class="bg-indigo-600 text-white rounded-2xl rounded-tr-md px-4 py-3 text-sm max-w-[85%]">${msg}</div></div>`;
+            chat.innerHTML += `<div class="flex gap-3 flex-row-reverse"><div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg></div><div class="bg-indigo-600 text-white rounded-2xl rounded-tr-md px-4 py-3 text-sm max-w-[85%]">${msg}</div></div>`;
             input.value = '';
             chat.scrollTop = chat.scrollHeight;
             
             // Add thinking indicator
-            chat.innerHTML += `<div class="flex gap-3" id="thinking"><div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div><div class="bg-gray-700 rounded-2xl px-4 py-3 text-sm text-gray-400">Thinking...</div></div>`;
+            chat.innerHTML += `<div class="flex gap-3" id="thinking"><div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div><div class="bg-gray-100 rounded-2xl px-4 py-3 text-sm text-gray-500">Thinking...</div></div>`;
             chat.scrollTop = chat.scrollHeight;
             
             try {
-                // Call Claude API via LangChain
-                const response = await fetch(API_URL, {
+                // Call the Worker API
+                const response = await fetch('/api/chat', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${API_KEY}`
-                    },
-                    body: JSON.stringify({
-                        model: 'claude-3-5-sonnet-20241022',
-                        messages: [
-                            {
-                                role: 'user',
-                                content: `You are a helpful AI assistant that answers questions about PDF documents. \n\nHere is the content of the PDF document:\n\n${pdfText}\n\nBased on the document above, please answer this question:\n\n${msg}\n\nProvide a clear and concise answer based on the document content. If the information is not in the document, please say so.`
-                            }
-                        ],
-                        max_tokens: 1024
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: msg, context: pdfText })
                 });
                 
                 const data = await response.json();
-                
-                // Remove thinking indicator
                 document.getElementById('thinking')?.remove();
                 
-                let aiResponse = 'Sorry, I could not get a response. Please try again.';
-                if (data.completions && data.completions[0] && data.completions[0].content) {
-                    aiResponse = data.completions[0].content;
-                } else if (data.choices && data.choices[0] && data.choices[0].message) {
-                    aiResponse = data.choices[0].message.content;
-                } else if (data.error) {
-                    aiResponse = `Error: ${data.error.message || JSON.stringify(data.error)}`;
-                }
+                const aiResponse = data.response || 'Sorry, I could not process your question. Please try again.';
                 
-                chat.innerHTML += `<div class="flex gap-3"><div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div><div class="bg-gray-700 rounded-2xl rounded-tl-md px-4 py-3 text-sm max-w-[85%] text-white whitespace-pre-wrap">${aiResponse}</div></div>`;
+                chat.innerHTML += `<div class="flex gap-3"><div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div><div class="bg-gray-100 rounded-2xl rounded-tl-md px-4 py-3 text-sm max-w-[85%] text-gray-800 whitespace-pre-wrap">${aiResponse}</div></div>`;
                 chat.scrollTop = chat.scrollHeight;
                 
             } catch (error) {
                 document.getElementById('thinking')?.remove();
-                chat.innerHTML += `<div class="flex gap-3"><div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div><div class="bg-gray-700 rounded-2xl px-4 py-3 text-sm text-red-400">Error: ${error.message}</div></div>`;
+                chat.innerHTML += `<div class="flex gap-3"><div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div><div class="bg-gray-100 rounded-2xl px-4 py-3 text-sm text-red-500">Error: ${error.message}</div></div>`;
                 chat.scrollTop = chat.scrollHeight;
             }
             
@@ -318,7 +543,352 @@
             sendBtn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>';
         }
 
-        function handlePayment() { alert('Stripe checkout would open here!'); hideAllModals(); }
+        // Export Functions
+        function getLastAIResponse() {
+            const chat = document.getElementById('chatContainer');
+            const aiMessages = chat.querySelectorAll('.bg-gray-100.rounded-tl-md');
+            if (aiMessages.length > 0) {
+                return aiMessages[aiMessages.length - 1].textContent;
+            }
+            return null;
+        }
+
+        function copyLastResponse() {
+            const response = getLastAIResponse();
+            if (response) {
+                navigator.clipboard.writeText(response).then(() => {
+                    showToast('Copied to clipboard!');
+                });
+            } else {
+                showToast('No response to copy');
+            }
+        }
+
+        function exportChat(format) {
+            if (format === 'txt') {
+                const chat = document.getElementById('chatContainer');
+                let content = '';
+                chat.querySelectorAll('.flex.gap-3').forEach(msg => {
+                    const isUser = msg.classList.contains('flex-row-reverse');
+                    const textEl = msg.querySelector('.bg-indigo-600, .bg-gray-100');
+                    if (textEl) {
+                        content += (isUser ? 'You: ' : 'AI: ') + textEl.textContent + '\n\n';
+                    }
+                });
+                downloadFile(content, 'chat-export.txt', 'text/plain');
+                showToast('Exported as TXT');
+            } else if (format === 'print') {
+                const printWindow = window.open('', '_blank');
+                const chat = document.getElementById('chatContainer');
+                let content = '<h2>PDF Smart AI - Chat Export</h2>';
+                content += '<p><strong>File:</strong> ' + document.getElementById('fileName').textContent + '</p><hr>';
+                chat.querySelectorAll('.flex.gap-3').forEach(msg => {
+                    const isUser = msg.classList.contains('flex-row-reverse');
+                    const textEl = msg.querySelector('.bg-indigo-600, .bg-gray-100');
+                    if (textEl) {
+                        content += '<p><strong>' + (isUser ? 'You' : 'AI') + ':</strong></p>';
+                        content += '<p>' + textEl.innerHTML + '</p><hr>';
+                    }
+                });
+                printWindow.document.write('<html><head><title>Chat Export</title></head><body>' + content + '</body></html>');
+                printWindow.document.close();
+                printWindow.print();
+            }
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Pricing Detail Modal Functions
+        let currentPlan = 'free';
+        const planDetails = {
+            'free': {
+                title: 'Free 免费版',
+                subtitle: '适合体验用户',
+                price: '$0/月',
+                features: [
+                    { icon: '📝', text: '每日 3 个问题' },
+                    { icon: '📄', text: '最大 10MB 文件' },
+                    { icon: '📄', text: '最多 30 页' },
+                    { icon: '❌', text: '不支持导出', disabled: true }
+                ],
+                btnText: '当前套餐'
+            },
+            'basic': {
+                title: 'Basic 基础版',
+                subtitle: '适合轻度用户',
+                price: '$4.99/月',
+                features: [
+                    { icon: '💬', text: '每日 50 个问题' },
+                    { icon: '📄', text: '最大 50MB 文件' },
+                    { icon: '📄', text: '最多 200 页' },
+                    { icon: '📤', text: '支持 TXT 导出' }
+                ],
+                btnText: '立即订阅'
+            },
+            'pro': {
+                title: 'Pro 专业版',
+                subtitle: '适合高级用户',
+                price: '$9.99/月',
+                features: [
+                    { icon: '♾️', text: '无限问题' },
+                    { icon: '📄', text: '最大 150MB 文件' },
+                    { icon: '📄', text: '最多 1000 页' },
+                    { icon: '📤', text: '支持全格式导出' },
+                    { icon: '⚡', text: '优先处理' }
+                ],
+                btnText: '立即订阅'
+            }
+        };
+
+        function showPricingDetail(plan) {
+            currentPlan = plan;
+            const detail = planDetails[plan];
+            const modal = document.getElementById('pricingDetailModal');
+            const title = document.getElementById('pricingDetailTitle');
+            const subtitle = document.getElementById('pricingDetailSubtitle');
+            const content = document.getElementById('pricingDetailContent');
+            const btn = document.getElementById('pricingDetailBtn');
+            
+            title.textContent = detail.title;
+            subtitle.textContent = detail.subtitle;
+            
+            let featuresHtml = `<div class="text-center mb-6">
+                <span class="text-4xl font-bold text-indigo-600">${detail.price}</span>
+            </div>
+            <div class="space-y-3 mb-6">`;
+            
+            detail.features.forEach(f => {
+                if (f.disabled) {
+                    featuresHtml += `<div class="flex items-center gap-3 text-gray-400">
+                        <span>${f.icon}</span>
+                        <span>${f.text}</span>
+                    </div>`;
+                } else {
+                    featuresHtml += `<div class="flex items-center gap-3 text-gray-700">
+                        <span>${f.icon}</span>
+                        <span>${f.text}</span>
+                    </div>`;
+                }
+            });
+            
+            featuresHtml += `</div>`;
+            content.innerHTML = featuresHtml;
+            btn.textContent = detail.btnText;
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closePricingDetail() {
+            const modal = document.getElementById('pricingDetailModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        // Close pricing detail modal on backdrop click
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('pricingDetailModal');
+            if (modal && modal.classList.contains('flex') && e.target === modal) {
+                closePricingDetail();
+            }
+        });
+
+        // Close on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closePricingDetail();
+            }
+        });
+
+        function selectPlan() {
+            closePricingDetail();
+            if (currentPlan === 'free') {
+                showView('workspace');
+            } else if (currentPlan === 'basic') {
+                alert('正在跳转到 Stripe 支付页面...\n\nBasic 套餐: $4.99/月');
+            } else if (currentPlan === 'pro') {
+                alert('正在跳转到 Stripe 支付页面...\n\nPro 套餐: $9.99/月');
+            }
+        }
+
+        // PDF Export Functions
+        function showPDFExportModal() {
+            const modal = document.createElement('div');
+            modal.id = 'pdfExportModal';
+            modal.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold text-gray-900">导出 PDF</h2>
+                        <button onclick="closePDFExportModal()" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="text-sm text-gray-500 mb-4">选择您要导出的格式：</p>
+                    <div class="space-y-3">
+                        <button onclick="exportPDFToFormat('docx')" class="w-full flex items-center gap-4 p-4 border border-gray-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition">
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <div class="text-left">
+                                <p class="font-medium text-gray-900">Word 文档 (.docx)</p>
+                                <p class="text-xs text-gray-500">可编辑的 Word 格式</p>
+                            </div>
+                        </button>
+                        <button onclick="exportPDFToFormat('txt')" class="w-full flex items-center gap-4 p-4 border border-gray-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition">
+                            <div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <div class="text-left">
+                                <p class="font-medium text-gray-900">纯文本 (.txt)</p>
+                                <p class="text-xs text-gray-500">纯文本格式，无格式</p>
+                            </div>
+                        </button>
+                        <button onclick="exportPDFToFormat('md')" class="w-full flex items-center gap-4 p-4 border border-gray-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition">
+                            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <div class="text-left">
+                                <p class="font-medium text-gray-900">Markdown (.md)</p>
+                                <p class="text-xs text-gray-500">Markdown 格式</p>
+                            </div>
+                        </button>
+                        <button onclick="exportPDFToFormat('html')" class="w-full flex items-center gap-4 p-4 border border-gray-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition">
+                            <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <div class="text-left">
+                                <p class="font-medium text-gray-900">HTML 网页</p>
+                                <p class="text-xs text-gray-500">可在浏览器中查看</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function closePDFExportModal() {
+            const modal = document.getElementById('pdfExportModal');
+            if (modal) modal.remove();
+        }
+
+        async function exportPDFToFormat(format) {
+            closePDFExportModal();
+            
+            if (!pdfText) {
+                showToast('请先上传 PDF 文件');
+                return;
+            }
+            
+            showToast('正在导出...');
+            
+            let content, filename, mimeType;
+            const timestamp = new Date().toISOString().slice(0, 10);
+            
+            switch(format) {
+                case 'docx':
+                    // 创建简化的 DOCX 格式 (实际上是 HTML 包装)
+                    content = `
+                        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                        <head>
+                            <meta charset="utf-8">
+                            <title>Exported PDF</title>
+                            <style>
+                                body { font-family: 'Microsoft YaHei', Arial, sans-serif; line-height: 1.6; padding: 20px; }
+                                h1 { color: #333; border-bottom: 2px solid #6366f1; padding-bottom: 10px; }
+                            </style>
+                        </head>
+                        <body>
+                            <h1>PDF 导出内容</h1>
+                            <div style="white-space: pre-wrap;">${escapeHtml(pdfText)}</div>
+                            <hr>
+                            <p style="color: #999; font-size: 12px;">导出时间: ${new Date().toLocaleString('zh-CN')}</p>
+                        </body>
+                        </html>
+                    `;
+                    filename = `pdf-export-${timestamp}.doc`;
+                    mimeType = 'application/msword';
+                    break;
+                    
+                case 'txt':
+                    content = pdfText;
+                    filename = `pdf-export-${timestamp}.txt`;
+                    mimeType = 'text/plain';
+                    break;
+                    
+                case 'md':
+                    content = `# PDF 导出内容\n\n${pdfText}\n\n---\n*导出时间: ${new Date().toLocaleString('zh-CN')}*`;
+                    filename = `pdf-export-${timestamp}.md`;
+                    mimeType = 'text/markdown';
+                    break;
+                    
+                case 'html':
+                    content = `<!DOCTYPE html>
+                    <html lang="zh-CN">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>PDF 导出</title>
+                        <style>
+                            body { font-family: 'Microsoft YaHei', Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; line-height: 1.6; }
+                            h1 { color: #6366f1; border-bottom: 2px solid #e5e7eb; padding-bottom: 15px; }
+                            .content { background: #f9fafb; padding: 20px; border-radius: 8px; white-space: pre-wrap; }
+                            .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px; }
+                        </style>
+                    </head>
+                    <body>
+                        <h1>📄 PDF 导出内容</h1>
+                        <div class="content">${escapeHtml(pdfText)}</div>
+                        <div class="footer">导出时间: ${new Date().toLocaleString('zh-CN')}</div>
+                    </body>
+                    </html>`;
+                    filename = `pdf-export-${timestamp}.html`;
+                    mimeType = 'text/html';
+                    break;
+            }
+            
+            downloadFile(content, filename, mimeType);
+            showToast(`已导出为 ${format.toUpperCase()}`);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg text-sm z-50';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
     </script>
+    <!-- Auth Module -->
+    <script src="auth.js"></script>
 </body>
 </html>
