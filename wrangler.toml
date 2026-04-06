@@ -1,9 +1,0 @@
-name = "pdf-smart-ai"
-main = "worker.js"
-compatibility_date = "2024-01-01"
-site = { bucket = "./public" }
-
-[vars]
-GOOGLE_CLIENT_ID = "701641662051-6v4ap64828e6b58vk6ufvc1rtvm4964o.apps.googleusercontent.com"
-
-# GOOGLE_CLIENT_SECRET 通过 GitHub Actions 自动设置
