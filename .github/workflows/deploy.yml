@@ -31,12 +31,9 @@ jobs:
           directory: public
           wranglerVersion: '3'
 
-      - name: Set Google OAuth Secret
+      - name: Set Google OAuth Secrets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: |
-          if [ -n "$GOOGLE_CLIENT_SECRET" ]; then
-            echo "$GOOGLE_CLIENT_SECRET" | wrangler secret put GOOGLE_CLIENT_SECRET --project=pdf-smart-ai --env=production || true
-          fi
+          echo "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" | wrangler secret put GOOGLE_CLIENT_SECRET --name=pdf-smart-ai || true
         continue-on-error: true

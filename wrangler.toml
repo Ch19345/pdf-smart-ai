@@ -5,4 +5,5 @@ site = { bucket = "./public" }
 
 [vars]
 GOOGLE_CLIENT_ID = "701641662051-6v4ap64828e6b58vk6ufvc1rtvm4964o.apps.googleusercontent.com"
-# GOOGLE_CLIENT_SECRET 通过 wrangler secret 设置，不要提交到 git
+
+# GOOGLE_CLIENT_SECRET 通过 GitHub Actions 自动设置
