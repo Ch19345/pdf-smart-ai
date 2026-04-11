@@ -1,0 +1,57 @@
+name: Enable Cloudflare Pages Functions
+
+on:
+  workflow_dispatch:
+
+jobs:
+  enable-functions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable Pages Functions
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "Checking current Pages project configuration..."
+          
+          # Get project details
+          curl -s "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects/pdf-smart-ai" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" | jq .
+          
+          echo ""
+          echo "Enabling Functions (_worker.js support)..."
+          
+          # Update project to enable Functions (advanced mode)
+          curl -s -X PATCH "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects/pdf-smart-ai" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "deployment_configs": {
+                "production": {
+                  "functions": {
+                    "enabled": true
+                  }
+                },
+                "preview": {
+                  "functions": {
+                    "enabled": true
+                  }
+                }
+              }
+            }' | jq .
+          
+          echo ""
+          echo "Triggering new deployment..."
+          
+          # Create a new deployment
+          curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects/pdf-smart-ai/deployments" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "branch": "main",
+              "commit_message": "Enable Functions via API"
+            }' | jq .
+          
+          echo ""
+          echo "Done! Wait 1-2 minutes for deployment to complete."
