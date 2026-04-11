@@ -1,0 +1,28 @@
+name: Deploy PayPal API to Cloudflare Pages
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Wrangler
+        run: npm install -g wrangler@3
+
+      - name: Deploy to Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 4e4d1829dba852d88b69a8904923f2fd
+        run: |
+          # 确保 _worker.js 存在
+          ls -la _worker.js
+          # 部署
+          wrangler pages deploy . --project-name=pdf-smart-ai --branch=main --commit-dirty=true
