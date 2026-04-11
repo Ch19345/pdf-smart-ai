@@ -1,0 +1,6 @@
+name = "pdf-smart-ai-api"
+main = "worker-paypal.js"
+compatibility_date = "2024-04-01"
+
+[env.production]
+compatibility_date = "2024-04-01"
