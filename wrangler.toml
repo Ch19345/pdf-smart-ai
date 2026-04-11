@@ -1,0 +1,13 @@
+# Cloudflare Pages Configuration
+name = "pdf-smart-ai"
+compatibility_date = "2024-04-01"
+
+[env.production]
+compatibility_date = "2024-04-01"
+
+# Functions directory
+[build]
+command = ""
+
+[[env.production.vars]]
+PAYPAL_MODE = "sandbox"
